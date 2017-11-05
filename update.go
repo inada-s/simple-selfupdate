@@ -23,6 +23,10 @@ func CheckLatestVersion(url string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Invalid Response: %v", resp.Status)
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
@@ -43,6 +47,10 @@ func Download(url string, savePath string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Invalid Response: %v", resp.Status)
+	}
 
 	_, err = io.Copy(fd, resp.Body)
 	if err != nil {
