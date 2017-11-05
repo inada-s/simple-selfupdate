@@ -35,12 +35,6 @@ func CheckLatestVersion(url string) (string, error) {
 }
 
 func Download(url string, savePath string) error {
-	fd, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
-
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -50,6 +44,12 @@ func Download(url string, savePath string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Invalid Response: %v", resp.Status)
 	}
+
+	fd, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
 
 	_, err = io.Copy(fd, resp.Body)
 	if err != nil {
