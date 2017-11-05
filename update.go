@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/kardianos/osext"
 )
 
 var (
@@ -85,7 +87,7 @@ func Update(args UpdateArgs) error {
 		return ErrNoNeedUpdate
 	}
 
-	execPath, err := os.Executable()
+	execPath, err := osext.Executable()
 	if err != nil {
 		return err
 	}
