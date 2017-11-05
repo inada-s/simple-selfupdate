@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -86,8 +85,6 @@ func Update(args UpdateArgs) error {
 		return ErrNoNeedUpdate
 	}
 
-	log.Println("Download the latest version")
-
 	execPath, err := os.Executable()
 	if err != nil {
 		return err
@@ -97,19 +94,16 @@ func Update(args UpdateArgs) error {
 
 	err = Download(args.DownloadURL, dlPath)
 	if err != nil {
-		log.Println("Failed to download err:", err)
 		return err
 	}
 
 	err = os.Rename(execPath, backupPath)
 	if err != nil {
-		log.Println("Failed to rename exec file for backup")
 		return err
 	}
 
 	err = os.Rename(dlPath, execPath)
 	if err != nil {
-		log.Println("Failed to rename download file to exec file")
 		os.Rename(backupPath, execPath) // restore backup
 		return err
 	}
