@@ -32,7 +32,7 @@ func CheckLatestVersion(url string) (string, error) {
 }
 
 func Download(url string, savePath string) error {
-	fd, err := os.Create(savePath)
+	fd, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	if err != nil {
 		return err
 	}
