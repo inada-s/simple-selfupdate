@@ -1,6 +1,10 @@
 package selfupdate
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,26 +18,65 @@ import (
 )
 
 var (
-	ErrNoNeedUpdate = errors.New("NoNeedUpdate")
+	ErrNoNeedUpdate       = errors.New("NoNeedUpdate")
+	ErrInvalidVersionInfo = errors.New("Invalid Version Json")
 )
 
-func CheckLatestVersion(url string) (string, error) {
+type version struct {
+	Version int    `json:"version"`
+	Hash    string `json:"hash"` // hex encoded hash
+}
+
+func CheckLatestVersion(url string) (*version, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Invalid Response: %v", resp.Status)
+		return nil, fmt.Errorf("Invalid Response: %v", resp.Status)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(body), nil
+	var v = new(version)
+	err = json.Unmarshal(body, v)
+	if err != nil {
+		return nil, err
+	}
+
+	// hex decoded
+	if len(v.Hash) != sha256.Size*2 {
+		return nil, ErrInvalidVersionInfo
+	}
+
+	return v, nil
+}
+
+// verify sha256 hash of the file and compare it
+func VerifySHA256Hash(path string, expected []byte) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	h := sha256.New()
+
+	_, err = io.Copy(h, f)
+	if err != nil {
+		return err
+	}
+	actual := h.Sum(nil)
+
+	if !bytes.Equal(expected, actual) {
+		fmt.Errorf("mismatch hash")
+	}
+
+	return nil
 }
 
 func Download(url string, savePath string) error {
@@ -78,12 +121,7 @@ func Update(args UpdateArgs) error {
 		return err
 	}
 
-	latestVersionInt, err := strconv.ParseInt(strings.TrimSpace(latestVersion), 10, 64)
-	if err != nil {
-		return fmt.Errorf("Invalid LatestVersion %v", err)
-	}
-
-	if currentVersionInt >= latestVersionInt {
+	if currentVersionInt >= int64(latestVersion.Version) {
 		return ErrNoNeedUpdate
 	}
 
@@ -95,6 +133,16 @@ func Update(args UpdateArgs) error {
 	backupPath := execPath + ".bak"
 
 	err = Download(args.DownloadURL, dlPath)
+	if err != nil {
+		return err
+	}
+
+	hash, err := hex.DecodeString(latestVersion.Hash)
+	if err != nil {
+		return err
+	}
+
+	err = VerifySHA256Hash(dlPath, hash)
 	if err != nil {
 		return err
 	}
